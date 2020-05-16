@@ -48,6 +48,7 @@ net= relja_simplenn_tidy(net);
 % % Not to use the ROI (not recommended): specify a negative number
 % 
 % useROI= true;
+% % useROI= false;
 % if useROI
 %     lastConvLayer= find(ismember(relja_layerTypes(net), 'custom'),1)-1; % Relies on the fact that NetVLAD, Max and Avg pooling are implemented as a custom layer and are the first custom layer in the network. Change if you use another network which has other custom layers before
 %     netBottom= net;
@@ -99,11 +100,41 @@ net= relja_simplenn_tidy(net);
 
 
 
-% --- Holidays
+% % --- Holidays
+% 
+% useRotated= true; % for rotated Holidays
+% dbTest= dbHolidays(useRotated); % it will automatically downscale images to (1024x768) pixels, as per the original testing procedure (see the Holidays website)
+% 
+% % Set the output filename for the database (query images are a subset)
+% dbFeatFn= sprintf('%s%s_%s_db.bin', paths.outPrefix, netID, dbTest.name);
+% 
+% % Compute db image representations (images have different resolutions so batchSize is constrained to 1)
+% serialAllFeats(net, dbTest.dbPath, dbTest.dbImageFns, dbFeatFn, 'batchSize', 1);
+% 
+% % Load the image representations
+% dbFeat= fread( fopen(dbFeatFn, 'rb'), inf, 'float32=>single');
+% dbFeat= reshape(dbFeat, [], dbTest.numImages);
+% nDims= size(dbFeat, 1);
+% qFeat= dbFeat(:, dbTest.queryIDs);
+% 
+% mAP= relja_retrievalMAP(dbTest, struct('db', dbFeat, 'qs', qFeat), true);
+% relja_display('Performance on %s, %d-D: %.2f', dbTest.name, size(dbFeat,1), mAP*100);
+% 
+% % Try 256-D
+% D= 256;
+% mAPsmall= relja_retrievalMAP(dbTest, struct( ...
+%     'db', relja_l2normalize_col(dbFeat(1:D,:)), ...
+%     'qs', relja_l2normalize_col(qFeat(1:D,:)) ...
+%     ), true);
+% relja_display('Performance on %s, %d-D: %.2f', dbTest.name, D, mAPsmall*100);
 
-useRotated= true; % for rotated Holidays
-dbTest= dbHolidays(useRotated); % it will automatically downscale images to (1024x768) pixels, as per the original testing procedure (see the Holidays website)
 
+
+% --- UKbench
+
+% useRotated= true; % for rotated Holidays
+% dbTest= dbHolidays(useRotated); % it will automatically downscale images to (1024x768) pixels, as per the original testing procedure (see the Holidays website)
+dbTest= dbUKbench();
 % Set the output filename for the database (query images are a subset)
 dbFeatFn= sprintf('%s%s_%s_db.bin', paths.outPrefix, netID, dbTest.name);
 
